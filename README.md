@@ -15,9 +15,14 @@ Python **3.11+**. Команды выполняются из корня прое
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
+
+Если PowerShell запрещает запуск локальных скриптов, для текущего окна можно
+однократно выполнить `Set-ExecutionPolicy -Scope Process Bypass`, затем повторить
+активацию. После активации в приглашении появится префикс `(.venv)`.
 
 В `.env` заполнить `OPENROUTER_API_KEY`. Файл исключён из Git. Если `.env` уже
 существует, не копировать шаблон поверх него. Других ключей не требуется.
@@ -26,11 +31,21 @@ Copy-Item .env.example .env
 в проверке были ошибки качества/доступности; они сохранены в отчётах сравнения.
 
 ```powershell
-.\.venv\Scripts\python.exe -m triage
-.\.venv\Scripts\python.exe evaluate.py
+python -m triage
+python evaluate.py
 ```
 
-Linux/macOS: использовать `.venv/bin/python` и `cp .env.example .env`.
+Linux/macOS:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+cp .env.example .env
+python -m triage
+python evaluate.py
+```
+
 Для проверки повторного запуска ещё раз выполнить `python -m triage`:
 в БД должно остаться **9 уникальных сообщений** из 10 файлов, новых LLM-вызовов
 и повторных уведомлений быть не должно.
@@ -38,7 +53,7 @@ Linux/macOS: использовать `.venv/bin/python` и `cp .env.example .en
 После временной ошибки сервиса:
 
 ```powershell
-.\.venv\Scripts\python.exe -m triage --retry-errors
+python -m triage --retry-errors
 ```
 
 Этот флаг повторяет только записи со статусом `error`. Если не удался только
@@ -56,8 +71,8 @@ Linux/macOS: использовать `.venv/bin/python` и `cp .env.example .en
 Свежий независимый прогон, без удаления существующей БД:
 
 ```powershell
-.\.venv\Scripts\python.exe -m triage --db data/fresh.sqlite3 --reports reports/fresh
-.\.venv\Scripts\python.exe evaluate.py --report reports/fresh/latest.json --output reports/fresh/evaluation.json
+python -m triage --db data/fresh.sqlite3 --reports reports/fresh
+python evaluate.py --report reports/fresh/latest.json --output reports/fresh/evaluation.json
 ```
 
 Коды завершения сервиса: `0` — обработка завершена (ручная очередь допустима),
@@ -238,8 +253,8 @@ $1 / млн входных и $3 / млн выходных токенов; эт�
 Эталон не меняется для маскировки ошибок очередной модели.
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m pytest -q
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
 ```
 
 Тесты используют собственные синтетические сообщения/ответы HTTP, а не готовые
