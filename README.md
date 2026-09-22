@@ -1,17 +1,17 @@
-# Разбор входящих обращений
+# Inbound message triage
 
-Прототип читает `inbox/*.txt`, классифицирует обращения через **OpenRouter**,
-извлекает поля, проверяет их, пересчитывает счета в USD,
-сохраняет результат в SQLite и выводит уведомления в консоль.
+The prototype reads `inbox/*.txt`, classifies messages through **OpenRouter**,
+extracts fields, validates them, converts invoices to USD,
+stores the result in SQLite, and prints notifications to the console.
 
-Проверенная конфигурация — **`z-ai/glm-5.2`**: 10/10 категорий, 55/55 проверяемых
-полей, стоимость полного прогона **$0.00382280904**, время около 43 секунд.
-Это результат на заданной небольшой выборке, не обещание 100% на новых письмах.
-Подробности и исходные отчёты: [submission/VALIDATION.md](submission/VALIDATION.md).
+The verified configuration is **`z-ai/glm-5.2`**: 10/10 categories, 55/55 checked
+fields, full-run cost **$0.00382280904**, about 43 seconds.
+That result is on the given small sample, not a promise of 100% on new mail.
+Details and source reports: [submission/VALIDATION.md](submission/VALIDATION.md).
 
-## Запуск
+## Running
 
-Python **3.11+**. Команды выполняются из корня проекта.
+Python **3.11+**. Run commands from the project root.
 
 ```Powershell
 python -m venv .venv
@@ -20,24 +20,25 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Если PowerShell запрещает запуск локальных скриптов, для текущего окна можно
-однократно выполнить `Set-ExecutionPolicy -Scope Process Bypass`, затем повторить
-активацию. После активации в приглашении появится префикс `(.venv)`.
+If PowerShell blocks local scripts, run `Set-ExecutionPolicy -Scope Process Bypass`
+once for the current window, then activate again. After activation the prompt
+shows the `(.venv)` prefix.
 
-В `.env` заполнить `OPENROUTER_API_KEY`. Файл исключён из Git. Если `.env` уже
-существует, не копировать шаблон поверх него. Других ключей не требуется.
-Шаблон выбирает **платную** GLM 5.2; для бесплатного запуска явно поставить
-`OPENROUTER_MODEL=openrouter/free` или `z-ai/glm-5.2:free`. У бесплатных вариантов
-в проверке были ошибки качества/доступности; они сохранены в отчётах сравнения.
+Set `OPENROUTER_API_KEY` in `.env`. The file is excluded from Git. If `.env`
+already exists, do not copy the template over it. No other keys are required.
+The template selects the **paid** GLM 5.2; for a free run set
+`OPENROUTER_MODEL=openrouter/free` or `z-ai/glm-5.2:free` explicitly. The free
+options had quality or availability errors in validation; those runs are kept
+in the comparison reports.
 
 ```powershell
 python -m triage
 python evaluate.py
 ```
 
-`evaluate.py` сравнивает `expected.json` с отчётом последнего прогона. Поэтому
-его нужно запускать после `python -m triage`; папка `reports/` и её JSON-файлы
-генерируются локально и намеренно не коммитятся в Git.
+`evaluate.py` compares `expected.json` with the latest run report. Run it after
+`python -m triage`. The `reports/` directory and its JSON files are generated
+locally and are intentionally not committed to Git.
 
 Linux/macOS:
 
@@ -50,107 +51,109 @@ python3 -m triage
 python3 evaluate.py
 ```
 
-Для проверки повторного запуска ещё раз выполнить `python -m triage`:
-в БД должно остаться **9 уникальных сообщений** из 10 файлов, новых LLM-вызовов
-и повторных уведомлений быть не должно.
+To check a repeat run, execute `python -m triage` again: the database should
+still hold **9 unique messages** from 10 files, with no new LLM calls and no
+repeated notifications.
 
-После временной ошибки сервиса:
+After a transient service error:
 
 ```powershell
 python -m triage --retry-errors
 ```
 
-Этот флаг повторяет только записи со статусом `error`. Если не удался только
-пересчёт валюты, уже полученное извлечение используется повторно без LLM.
-`needs_review` автоматически не переобрабатывается: отсутствие реквизитов
-повторным обращением к модели не исправить. Изменение исходного файла создаёт
-новое сообщение по новому хешу.
+This flag retries only records with status `error`. If only the currency
+conversion failed, the extraction already obtained is reused without an LLM
+call. `needs_review` is not reprocessed automatically: missing payment details
+cannot be fixed by asking the model again. Changing the source file creates a
+new message under a new hash.
 
-Параметры CLI: `--inbox`, `--db`, `--reports`, `--model`, `--retry-errors`.
-Поддерживаются `openrouter/free`, `z-ai/glm-5.2:free` и `z-ai/glm-5.2`.
-Последняя модель **платная** и подключена по запросу автора после проверки
-бесплатных вариантов. Сменить модель можно через `OPENROUTER_MODEL` или `--model`.
-Для сравнения моделей использовать отдельную БД: обычный повторный запуск
-использует ранее сохранённые результаты, даже если настройка модели изменилась.
-Свежий независимый прогон, без удаления существующей БД:
+CLI parameters: `--inbox`, `--db`, `--reports`, `--model`, `--retry-errors`.
+Supported models are `openrouter/free`, `z-ai/glm-5.2:free`, and `z-ai/glm-5.2`.
+The last model is **paid** and was enabled at the author's request after the
+free options were checked. Change the model with `OPENROUTER_MODEL` or `--model`.
+Use a separate database when comparing models: a normal repeat run reuses
+previously stored results even if the model setting changed.
+A fresh independent run, without deleting the existing database:
 
 ```powershell
 python -m triage --db data/fresh.sqlite3 --reports reports/fresh
 python evaluate.py --report reports/fresh/latest.json --output reports/fresh/evaluation.json
 ```
 
-Коды завершения сервиса: `0` — обработка завершена (ручная очередь допустима),
-`1` — есть технические ошибки отдельных файлов, `2` — ошибка конфигурации/запуска.
-Оценка качества возвращает `0` только при совпадении всех ожиданий и отсутствии
-ошибок обработки; несовпадения возвращают `1`.
+Service exit codes: `0` — processing finished (a manual queue is allowed),
+`1` — technical errors on individual files, `2` — configuration or startup error.
+Quality evaluation returns `0` only when every expectation matches and there
+are no processing errors; mismatches return `1`.
 
-## Результаты и структура
+## Results and layout
 
-- `reports/latest.json` — полный последний отчёт, результаты каждого файла,
-  список ручного внимания, токены, стоимость, фактически выбранные модели.
-- `reports/<run_id>.json` — неизменяемые по имени отчёты отдельных прогонов.
-- `reports/evaluation.json` — оценка категорий и ключевых полей с расхождениями.
-- `data/triage.sqlite3` — сообщения, прогоны, файлы прогонов, попытки LLM-вызовов,
-  отправленные уведомления. Сохраняются и исходный текст, и извлечённые данные.
-- `data/fx_cache.json` — локальный кеш курсов до указанного API обновления.
-- `submission/` — проверенные результаты для сдачи; статус проверки описан в
+- `reports/latest.json` — the full latest report, per-file results, the manual
+  attention list, tokens, cost, and the models actually selected.
+- `reports/<run_id>.json` — immutable per-run reports, identified by filename.
+- `reports/evaluation.json` — category and key-field scores, with mismatches.
+- `data/triage.sqlite3` — messages, runs, run files, LLM call attempts, and
+  sent notifications. Both the source text and the extracted data are stored.
+- `data/fx_cache.json` — local rate cache until the API update time.
+- `submission/` — checked results for handoff; the check status is described in
   [submission/VALIDATION.md](submission/VALIDATION.md).
-- `expected.json` — ожидания для всех 10 файлов, составленные до LLM-прогона.
-- `triage/` — модели данных, правила, клиенты API, SQLite, обработка и CLI.
-- `tests/` — тесты с синтетическими ответами HTTP, без ключа и сети.
+- `expected.json` — expectations for all 10 files, written before the LLM run.
+- `triage/` — data models, rules, API clients, SQLite, processing, and the CLI.
+- `tests/` — tests with synthetic HTTP responses, without a key or the network.
 
-## Схема и решения
+## Schema and decisions
 
-Общие поля: `category`, `summary`, `fields`, `security_flags`. `summary` содержит
-описание проблемы поддержки/бага или объясняет классификацию. Общий набор
-nullable-полей в `fields` упрощает структурированный ответ разных бесплатных
-моделей; допустимость и обязательность зависят от категории.
+Shared fields: `category`, `summary`, `fields`, `security_flags`. `summary` holds
+the support or bug problem, or explains the classification. A shared set of
+nullable fields in `fields` makes structured output easier across different free
+models; which fields are allowed or required depends on the category.
 
-| Категория | Данные | Минимум для автоматической обработки |
+| Category | Data | Minimum for automatic processing |
 |---|---|---|
-| `support` | Контакт, продукт; проблема в `summary` | Непустое описание; контакт может отсутствовать |
-| `finance_invoice` | Поставщик, сумма, валюта, номер, даты, условия оплаты | Поставщик, положительная сумма, валюта, номер |
-| `sales_lead` | Компания, контакт, штат, интерес | Компания, интерес, email или незамаскированный телефон |
-| `bug_report` | Продукт, версия, браузер, серьёзность, функция; описание в `summary` | Описание и серьёзность |
-| `spam` | Причина в `summary`, признаки атаки | Бизнес-поля пустые |
-| `unknown` | Причина в `summary` | Всегда ручной разбор |
+| `support` | Contact, product; the problem is in `summary` | Non-empty description; contact may be absent |
+| `finance_invoice` | Vendor, amount, currency, number, dates, payment terms | Vendor, positive amount, currency, number |
+| `sales_lead` | Company, contact, state, interest | Company, interest, email or an unmasked phone |
+| `bug_report` | Product, version, browser, severity, feature; description in `summary` | Description and severity |
+| `spam` | Reason in `summary`, attack signals | Business fields empty |
+| `unknown` | Reason in `summary` | Always manual review |
 
-Категория не равна статусу. `completed` означает успешное извлечение и обогащение,
-`needs_review` — недостаточные данные или неоднозначный/опасный текст,
-`error` — технический сбой. Критичный баг может иметь `completed` и одновременно
-попадать в ручную очередь и уведомления: извлечение успешно, но проблема срочная.
-Неполный счёт остаётся `finance_invoice`, ошибка валютного API также не меняет
-категорию. При полном сбое классификации используется технический `unknown`
-с `error_stage=llm`, а не утверждение, что письмо действительно неоднозначно.
+Category is not status. `completed` means extraction and enrichment succeeded,
+`needs_review` means insufficient data or ambiguous or dangerous text,
+`error` means a technical failure. A critical bug can be `completed` and still
+enter the manual queue and notifications: extraction succeeded, but the problem
+is urgent. An incomplete invoice stays `finance_invoice`; a currency API error
+does not change the category either. A total classification failure uses a
+technical `unknown` with `error_stage=llm`, rather than claiming the message
+is genuinely ambiguous.
 
-Pydantic запрещает неизвестные поля и категории, проверяет даты и формат email,
-положительность/конечность сумм (верхняя граница прототипа — 10^15).
-Суммы представлены `Decimal`, итог в USD округляется до центов `ROUND_HALF_UP`.
-`null` означает «не указано»; модель не должна придумывать реквизиты.
-Валюта — код из трёх заглавных букв, поддержка проверяется по таблице API.
+Pydantic rejects unknown fields and categories, checks dates and email format,
+and checks that amounts are positive and finite (the prototype upper bound is
+10^15). Amounts are `Decimal`; the USD total is rounded to cents with
+`ROUND_HALF_UP`. `null` means "not stated"; the model must not invent payment
+details. Currency is a three-letter uppercase code, and support is checked
+against the API table.
 
-Дедупликация — SHA-256 текста с нормализацией BOM, переводов строк и внешних
-пробелов. Уникальный ключ БД защищает от повторной вставки. Отдельные `run_items`
-сохраняют факт поступления обоих файлов. Это дедупликация одинакового содержимого,
-а не бизнес-дедупликация разных писем с одним номером счёта. Прототип рассчитан
-на один одновременно запущенный процесс.
+Deduplication is SHA-256 of the text after normalizing BOM, newlines, and
+surrounding whitespace. A unique database key prevents a second insert.
+Separate `run_items` record that both files arrived. This deduplicates identical
+content, not different emails that share one invoice number. The prototype is
+built for one process at a time.
 
-LLM получает системные правила отдельно от недоверенного текста письма,
-`require_parameters=true` и температуру 0. Для `openrouter/free` и платной GLM
-используется `response_format=json_schema`. Бесплатная GLM не поддерживает этот
-параметр: та же схема передаётся в системном промпте. Для обеих GLM отключено
-необязательное рассуждение, поскольку задача — короткое извлечение полей.
-Локальная проверка обязательна даже при structured outputs. Ограниченные повторы
-применяются к 408/429/5xx, сетевым ошибкам и невалидному ответу. `Retry-After`
-учитывается; ожидание более 30 секунд откладывается до следующего запуска.
-Ошибка авторизации блокирует дальнейшие LLM-вызовы текущего прогона.
-Некорректный JSON после всех попыток сохраняется как техническая ошибка;
-необработанный ответ модели не исполняется и не переносится в бизнес-поля.
+The LLM receives system rules separately from the untrusted message text, with
+`require_parameters=true` and temperature 0. `openrouter/free` and the paid GLM
+use `response_format=json_schema`. The free GLM does not support that parameter:
+the same schema is passed in the system prompt. Optional reasoning is disabled
+for both GLM variants because the task is short field extraction. Local
+validation is required even with structured outputs. Bounded retries apply to
+408/429/5xx, network errors, and invalid output. `Retry-After` is honored; a
+wait longer than 30 seconds is deferred until the next run. An authorization
+error blocks further LLM calls for the current run. Invalid JSON after all
+attempts is stored as a technical error; the raw model response is not executed
+and is not copied into business fields.
 
-### Граница недоверенного ввода
+### Untrusted input boundary
 
-Письмо не конкатенируется с инструкциями как обычная строка. Клиент формирует
-отдельный user-role envelope:
+The message is not concatenated with the instructions as a plain string. The
+client builds a separate user-role envelope:
 
 ```text
 <untrusted_message>
@@ -158,165 +161,174 @@ LLM получает системные правила отдельно от н�
 </untrusted_message>
 ```
 
-Содержимое JSON экранирует `<`, `>` и `&`, поэтому текст письма не может закрыть
-внешнюю метку, вставить новую роль или подменить JSON-структуру. Это граница
-данных для модели, а не криптографическая гарантия: результат всё равно проходит
-локальную Pydantic-проверку.
+The JSON content escapes `<`, `>`, and `&`, so the message text cannot close
+the outer tag, insert a new role, or replace the JSON structure. This is a data
+boundary for the model, not a cryptographic guarantee: the result still goes
+through local Pydantic validation.
 
-System prompt отдельно перечисляет fake role tokens, вложенный JSON, HTML-комментарии,
-кодовые блоки, ложные closing tags и encoded payloads как недоверенные данные. Он
-запрещает переходить по ссылкам, выполнять код, раскрывать промпт и одобрять платежи.
-Обычная деловая просьба «оплатить счёт» остаётся фактом счёта; attack, который
-обсуждается в баг-репорте, не считается атакой, если он не пытается изменить
-поведение классификатора.
+The system prompt separately lists fake role tokens, nested JSON, HTML comments,
+code blocks, false closing tags, and encoded payloads as untrusted data. It
+forbids following links, executing code, revealing the prompt, and approving
+payments. An ordinary business request to "pay the invoice" remains an invoice
+fact; an attack discussed inside a bug report is not treated as an attack unless
+it tries to change the classifier's behavior.
 
-Keyword-фильтр в `triage/security.py` — быстрый quarantine для нескольких очевидных
-формулировок, а не основная защита. Обход фильтра всё равно попадает в эту границу.
-Если модель выставила `prompt_injection` вместе с бизнес-полями, pipeline обнуляет
-поля и превращает результат в `spam`/`needs_review`; валютный enrichment не запускается.
-Adversarial-тесты покрывают fake roles, вложенный JSON, boundary spoofing, пробелы,
-base64 и HTML-комментарии.
+The keyword filter in `triage/security.py` is a fast quarantine for a few obvious
+phrases, not the main defense. A bypass of the filter still hits this boundary.
+If the model sets `prompt_injection` together with business fields, the pipeline
+clears the fields and turns the result into `spam` / `needs_review`; currency
+enrichment does not run. Adversarial tests cover fake roles, nested JSON,
+boundary spoofing, whitespace, base64, and HTML comments.
 
-Профиль модели отделён от prompt builder: `triage/llm_profiles.py` описывает поддержку
-native JSON schema, reasoning и тарифный предел. Контракт прогона сохраняет версию
-промпта, хеш system prompt, хеш схемы, модель и fingerprint. Старый результат не
-подменяется новой моделью молча. Для осознанной повторной классификации используйте
-`--refresh-cache` — это может создать новые платные вызовы.
+The model profile is separate from the prompt builder: `triage/llm_profiles.py`
+describes native JSON schema support, reasoning, and the price ceiling. The run
+contract stores the prompt version, system-prompt hash, schema hash, model, and
+fingerprint. An old result is not silently replaced by a new model. For an
+intentional reclassification use `--refresh-cache` — that can create new paid
+calls.
 
-`openrouter/free` выбирает фактическую бесплатную модель, поэтому даже при
-температуре 0 результаты между чистыми прогонами могут отличаться. Сохраняем её
-название и generation ID. Автоматического перехода с бесплатной модели на
-платную нет: платная GLM выбирается явно. Для неё задан предел тарифа провайдера
-$1 / млн входных и $3 / млн выходных токенов; это предел тарифа, не бюджета прогона.
-Стоимость берём из `usage.cost`. При отсутствии значения у бесплатной модели
-используем 0 по тарифу с явной пометкой источника; у платной — `null`, отдельно
-показывая известную часть суммы и число вызовов без стоимости. Не выдаём неизвестные
-расходы за нулевые. Считаем и неудачные попытки;
-отсутствующие данные о токенах отдельно отмечаем, не выдавая их за измеренный ноль.
+`openrouter/free` picks the actual free model, so even at temperature 0 the
+results of clean runs can differ. Its name and generation ID are stored. There
+is no automatic switch from a free model to a paid one: the paid GLM is selected
+explicitly. Its provider price ceiling is $1 / 1M input tokens and $3 / 1M
+output tokens; that is a price ceiling, not a run budget. Cost comes from
+`usage.cost`. When a free model omits the value, 0 is used at the published
+rate with an explicit source label; for a paid model the value is `null`, and
+the known part of the sum and the number of calls without a cost are shown
+separately. Unknown spend is not reported as zero. Failed attempts are counted;
+missing token data is marked separately and is not reported as a measured zero.
 
-## Валюты и уведомления
+## Currencies and notifications
 
-Один `GET https://open.er-api.com/v6/latest/USD` возвращает EUR, GEL и другие
-курсы относительно USD. Формула: `amount_usd = amount / rates[currency]`.
-Берём последний доступный курс на момент обработки, **не исторический курс даты
-счёта**. Сохраняем источник, время курса, число единиц валюты за USD и итог.
-Сохранённые результаты не пересчитываются при обычном повторном запуске.
-Протухший кеш не используется как свежий. Если API недоступен, счёт остаётся в БД
-с ошибкой обогащения и попадает в ручную очередь. USD внешнего запроса не требует.
+A single `GET https://open.er-api.com/v6/latest/USD` returns EUR, GEL, and other
+rates relative to USD. Formula: `amount_usd = amount / rates[currency]`.
+The latest rate available at processing time is used, **not the historical rate
+on the invoice date**. The source, rate time, units of currency per USD, and
+the total are stored. Stored results are not recomputed on a normal repeat run.
+A stale cache is not treated as fresh. If the API is unavailable, the invoice
+stays in the database with an enrichment error and enters the manual queue.
+USD does not need an external request.
 
-**[Rates By Exchange Rate API](https://www.exchangerate-api.com)** — атрибуция
-источника также присутствует в консоли и каждом отчёте.
+**[Rates By Exchange Rate API](https://www.exchangerate-api.com)** — source
+attribution is also present in the console and in every report.
 
-Уведомления выводятся в консоль с ответственным:
+Notifications are printed to the console with an owner:
 
-- `engineering` — критичный баг: заблокирована работа отдела;
-- `finance` — сумма **строго больше** `INVOICE_ALERT_USD` (по умолчанию 1000 USD);
-- `operations` — любой `unknown`;
-- `security` — обнаруженная попытка подменить инструкции.
+- `engineering` — critical bug: a department's work is blocked;
+- `finance` — amount **strictly greater than** `INVOICE_ALERT_USD` (default 1000 USD);
+- `operations` — any `unknown`;
+- `security` — a detected attempt to override the instructions.
 
-Уведомления дедуплицируются по хешу сообщения и типу события. Консоль и SQLite
-не образуют общую транзакцию: авария после печати, но до записи отметки может
-привести к повторному уведомлению. Это осознанное ограничение прототипа.
+Notifications are deduplicated by message hash and event type. The console and
+SQLite are not one transaction: a crash after printing and before the mark is
+written can produce a repeat notification. That is an accepted prototype limit.
 
-## Проблемные входные данные
+## Difficult inputs
 
-- `02` / `07`: полностью одинаковые письма — один результат, два входных файла.
-  Дата выставления не указана; срок оплаты не подменяет её. Вложения в тесте
-  отсутствуют — банковские реквизиты не извлекаем.
-- `03`: телефон замаскирован, сохраняем его как дано. Рабочий контакт — email.
-- `04`: «работа отдела встала» соответствует нашей политике `critical`.
-  Название продукта неизвестно: Excel — назначение экспорта, а не продукт.
-- `06`: лари = GEL, пробелы в сумме нормализуются. `15.09.2026` — дата счёта.
-  «Оплата в течение 10 дней» сохраняется текстом; точную дату не вычисляем без
-  подтверждения начала отсчёта и правил календарных/рабочих дней.
-- `08`: предложение функции — `unknown`, поскольку такой категории в задании
-  нет. Это заранее выбранная политика, а не ошибка классификатора.
-- `09`: явный счёт без реквизитов — `finance_invoice` + `needs_review`.
-- `10`: явная prompt injection. Небольшой локальный фильтр отправляет такие
-  обращения в `spam` + карантин **до вызова LLM**; число таких решений видно по
-  `classification_source=security_guard`. Поля фиктивного счёта не сохраняются
-  как реквизиты. Дополнительная защита обнуляет бизнес-поля, если атаку заметила
-  сама модель. Фильтр эвристический, может ошибаться и не обещает обнаружить все
-  перефразированные атаки. У LLM нет инструментов, исполнения кода или механизма
-  одобрения платежей — даже допустимый счёт автоматически не оплачивается.
+- `02` / `07`: identical messages — one result, two input files. The issue date
+  is absent; the payment due term does not replace it. The test has no
+  attachments, so bank details are not extracted.
+- `03`: the phone is masked and stored as given. The usable contact is the email.
+- `04`: "the department's work has stopped" matches the `critical` policy.
+  The product name is unknown: Excel is the export target, not the product.
+- `06`: lari = GEL, spaces in the amount are normalized. `15.09.2026` is the
+  invoice date. "Payment within 10 days" is kept as text; an exact date is not
+  computed without a confirmed start of the count and calendar or business-day
+  rules.
+- `08`: a feature request is `unknown` because the assignment has no such
+  category. That policy was chosen in advance; it is not a classifier error.
+- `09`: an explicit invoice without payment details — `finance_invoice` +
+  `needs_review`.
+- `10`: explicit prompt injection. A small local filter sends these messages to
+  `spam` + quarantine **before the LLM call**; the count of those decisions is
+  visible as `classification_source=security_guard`. Fields of the fake invoice
+  are not stored as payment details. A second guard clears business fields if
+  the model itself noticed the attack. The filter is a heuristic, can be wrong,
+  and does not promise to catch every rephrased attack. The LLM has no tools,
+  no code execution, and no payment-approval mechanism — even a valid invoice
+  is not paid automatically.
 
-## Оценка качества и проверки
+## Quality evaluation and checks
 
-`evaluate.py` **не вызывает LLM** и не используется сервисом для классификации.
-Он сравнивает независимый `expected.json` с результатом прогона:
+`evaluate.py` **does not call the LLM** and is not used by the service for
+classification. It compares an independent `expected.json` with the run result:
 
-1. Точность категорий — по всем 10 входным файлам, включая дубликат.
-2. Точность ключевых полей — числовое сравнение сумм, точное сравнение дат/null,
-   строк без учёта регистра и лишних пробелов. Для свободного текста интереса
-   проверяем наличие «1С» и «API», для условий оплаты — «10».
-3. Число полностью совпавших сообщений, отсутствие технических ошибок.
+1. Category accuracy — across all 10 input files, including the duplicate.
+2. Key-field accuracy — numeric comparison of amounts, exact comparison of
+   dates and null, strings compared without case or extra spaces. For free-text
+   interest, the check looks for "1C" and "API"; for payment terms, for "10".
+3. The number of fully matched messages, and the absence of technical errors.
 
-Отсутствующие файлы и поля считаются ошибками, даже если ожидалось `null`.
-Изменчивые курсы не зашиты в эталон: формула и округление проверяются отдельными
-тестами. Десять примеров — smoke test, не статистически надёжная оценка качества.
-Эталон не меняется для маскировки ошибок очередной модели.
+Missing files and fields count as errors, even when `null` was expected.
+Moving exchange rates are not baked into the fixture: the formula and rounding
+are checked by separate tests. Ten examples are a smoke test, not a
+statistically reliable quality estimate. The fixture is not edited to hide the
+errors of the next model.
 
 ```powershell
 python -m pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-Тесты используют собственные синтетические сообщения/ответы HTTP, а не готовые
-ожидания из `expected.json`. Проверяются повторный запуск, уведомления, валюты,
-сбои сети и авторизации, валидация, безопасность и полнота оценки качества.
-Они проверяют код, но не заменяют реальный прогон LLM.
+Tests use their own synthetic messages and HTTP responses, not the ready-made
+expectations in `expected.json`. They check the repeat run, notifications,
+currencies, network and authorization failures, validation, security, and
+evaluation completeness. They check the code; they do not replace a real LLM run.
 
-## Что изменить для продакшена
+## What to change for production
 
-Прототип — один процесс, локальный SQLite и консоль. Для продакшена этого
-недостаточно: нужна отдельная среда выполнения, а не только доработка пайплайна.
+The prototype is one process, local SQLite, and the console. Production needs
+a separate execution environment, not only a longer pipeline.
 
-Среда: изолированный контур с минимальными правами, секреты вне образа и вне
-репозитория, исходящий трафик только к почте, LLM и источнику курса. Разбор
-вложений — в песочнице без исполнения вложенного кода и без доступа к хосту.
-Модель по-прежнему без инструментов и без права одобрять платежи.
+Environment: an isolated perimeter with least privilege, secrets outside the
+image and outside the repository, egress only to mail, the LLM, and the rate
+source. Attachment parsing runs in a sandbox, with no execution of embedded
+code and no access to the host. The model still has no tools and no authority
+to approve payments.
 
-Нагрузка: очередь с несколькими воркерами, блокировки и идемпотентность по
-бизнес-ключу счёта (поставщик + номер), лимит параллелизма к LLM и валютному
-API, backpressure при всплеске писем. Один упавший воркер не должен терять
-или дважды проводить сообщение.
+Load: a queue with several workers, locks, and idempotency on the invoice
+business key (vendor + number), a concurrency limit toward the LLM and the
+currency API, and backpressure when mail spikes. One failed worker must not
+lose a message or process it twice.
 
-Ошибки: повтор только временных сбоев, dead-letter для сообщений, которые
-нельзя обработать, отдельные сигналы на сбой извлечения, курса, доставки
-уведомлений и prompt injection. Техническая ошибка одного письма не
-останавливает контур; `needs_review` остаётся ручной очередью с исправлением
-и аудитом, а не автоматическим повтором.
+Errors: retry only transient failures, a dead-letter path for messages that
+cannot be processed, and separate signals for extraction failure, rate failure,
+notification delivery failure, and prompt injection. A technical error on one
+message does not stop the perimeter; `needs_review` stays a manual queue with
+correction and an audit trail, not an automatic retry.
 
-Аптайм: health и readiness, надзор процесса, SLO на задержку и долю технических
-ошибок, алерт при недоступности почты, LLM или курса. Наблюдаемость — метрики,
-логи и трассы без персональных данных и текста писем в открытом виде.
+Uptime: health and readiness, process supervision, an SLO on latency and on the
+share of technical errors, and an alert when mail, the LLM, or the rate source
+is unavailable. Observability is metrics, logs, and traces without personal
+data or message text in the clear.
 
-Прикладной контур поверх этого: получение почты и вложений, outbox уведомлений,
-защищённое хранение секретов и персональных данных, политика хранения и
-удаления. Зафиксировать модель и версию промпта, расширить размеченную выборку,
-отдельно измерять ошибки извлечения и prompt injection. Для финансового учёта
-согласовать источник и дату курса. Отправку реальных клиентских данных внешнему
-LLM согласовать с требованиями компании.
+The application layer on top of that: fetching mail and attachments, a
+notification outbox, protected storage of secrets and personal data, and a
+retention and deletion policy. Pin the model and the prompt version, expand
+the labeled sample, and measure extraction errors and prompt injection
+separately. For financial accounting, agree the rate source and the rate date.
+Sending real customer data to an external LLM has to be agreed with company
+requirements.
 
-## Время и AI-инструменты
+## Time and AI tools
 
-Плановый бюджет — **4 часа**. Фактическая работа — **3 часа 30 минут**,
-разбивка в [WORKLOG.md](WORKLOG.md):
+The planned budget is **4 hours**. Actual work is **3 hours 30 minutes**,
+broken down in [WORKLOG.md](WORKLOG.md):
 
-- **30 минут** — архитектура: категории и схема полей, граница недоверенного
-  ввода, дедупликация, пересчёт валют и правила уведомлений.
-- **1 час** — реализация: клиенты API, SQLite, пайплайн, CLI, эталон и
-  документация.
-- **2 часа** — тестирование: автоматические тесты, adversarial-сценарии,
-  живой прогон OpenRouter и GLM 5.2, оценка качества и повторный запуск.
+- **30 minutes** — architecture: categories and the field schema, the untrusted
+  input boundary, deduplication, currency conversion, and notification rules.
+- **1 hour** — implementation: API clients, SQLite, the pipeline, the CLI, the
+  fixture, and documentation.
+- **2 hours** — testing: automated tests, adversarial cases, a live OpenRouter
+  and GLM 5.2 run, quality evaluation, and the repeat run.
 
-Использован **OpenAI Codex** для проектирования, генерации и исправления кода,
-тестов и документации, а также проверки документации API. Работа приложения
-использует **OpenRouter** (`openrouter/free`, GLM 5.2 free / GLM 5.2);
-фактически выбранные модели записываются в отчёт. Ожидания и неоднозначные случаи
-сформулированы до реального прогона.
+**OpenAI Codex** was used for design, code generation and fixes, tests,
+documentation, and checking API documentation. The application uses
+**OpenRouter** (`openrouter/free`, GLM 5.2 free / GLM 5.2); the models actually
+selected are recorded in the report. Expectations and ambiguous cases were
+written down before the real run.
 
-Документация: [OpenRouter free router](https://openrouter.ai/openrouter/free),
+Documentation: [OpenRouter free router](https://openrouter.ai/openrouter/free),
 [structured outputs](https://openrouter.ai/docs/guides/features/structured-outputs),
 [usage accounting](https://openrouter.ai/docs/cookbook/administration/usage-accounting),
 [ExchangeRate-API](https://www.exchangerate-api.com/docs/free).

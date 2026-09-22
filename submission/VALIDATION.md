@@ -1,80 +1,81 @@
-# Результаты проверки — 22 сентября 2026
+# Validation results — 22 September 2026
 
-## Итоговый реальный прогон
+## Final live run
 
-Модель: **`z-ai/glm-5.2`**, обычный платный endpoint OpenRouter.
-Прогон: 15:39:16–15:39:59 Asia/Tbilisi, около **43 секунд**.
+Model: **`z-ai/glm-5.2`**, the regular paid OpenRouter endpoint.
+Run: 15:39:16–15:39:59 Asia/Tbilisi, about **43 seconds**.
 
-| Проверка | Результат |
+| Check | Result |
 |---|---|
-| Входных файлов / уникальных сообщений | 10 / 9 |
-| Категории | **10/10, 100%** |
-| Проверяемые поля и условия | **55/55, 100%** |
-| Полностью совпавшие сообщения | **10/10** |
-| Технические ошибки | **0** |
-| LLM-вызовы / успешные | **8 / 8** |
-| Входные / выходные токены | 5155 / 1446 |
-| Стоимость по `usage.cost` | **$0.00382280904** |
-| Новых уведомлений | 5 |
-| Уникальных обращений в ручной очереди | 6 |
+| Input files / unique messages | 10 / 9 |
+| Categories | **10/10, 100%** |
+| Checked fields and conditions | **55/55, 100%** |
+| Fully matched messages | **10/10** |
+| Technical errors | **0** |
+| LLM calls / successful | **8 / 8** |
+| Input / output tokens | 5155 / 1446 |
+| Cost from `usage.cost` | **$0.00382280904** |
+| New notifications | 5 |
+| Unique items in the manual queue | 6 |
 
-Исходный отчёт: [latest_run.json](latest_run.json).
-Оценка: [evaluation.json](evaluation.json).
-Восемь LLM-вызовов: дубликат `07` не отправлялся повторно, явная атака `10`
-изолирована локальным фильтром. Это метрики всего сервиса, а не чистой LLM на
-десяти независимых примерах. Ручная очередь включает два крупных счёта,
-критичный баг, пожелание, неполный счёт и попытку подмены инструкций.
+Source report: [latest_run.json](latest_run.json).
+Evaluation: [evaluation.json](evaluation.json).
+Eight LLM calls: duplicate `07` was not sent again, and the explicit attack `10`
+was isolated by the local filter. These are metrics of the whole service, not of
+a pure LLM on ten independent examples. The manual queue includes two large
+invoices, a critical bug, a feature request, an incomplete invoice, and an
+attempt to override the instructions.
 
-Повторный запуск с теми же данными: **0 новых записей, 0 LLM-вызовов,
-0 валютных запросов, 0 повторных уведомлений, $0**; в SQLite осталось 9 сообщений.
-Результат: [repeat_run.json](repeat_run.json),
-повторная оценка: [repeat_evaluation.json](repeat_evaluation.json).
+A repeat run on the same data: **0 new records, 0 LLM calls, 0 currency
+requests, 0 repeat notifications, $0**; SQLite still holds 9 messages.
+Result: [repeat_run.json](repeat_run.json),
+repeat evaluation: [repeat_evaluation.json](repeat_evaluation.json).
 
-## Проверка валют
+## Currency check
 
-Реальный ExchangeRate-API вернул EUR 1240 = USD 1422.41 и
-GEL 3200 = USD 1227.75. Дата курса: `2026-09-22T00:02:31+00:00`.
-Снимок: [fx_live_check.json](fx_live_check.json).
-Полный прогон использовал полученный живым запросом, ещё действующий кеш;
-поэтому `fx_http_requests=0` в его отчёте. Это не фиксированные тестовые курсы.
+The live ExchangeRate-API returned EUR 1240 = USD 1422.41 and
+GEL 3200 = USD 1227.75. Rate timestamp: `2026-09-22T00:02:31+00:00`.
+Snapshot: [fx_live_check.json](fx_live_check.json).
+The full run used a still-valid cache from that live request, so
+`fx_http_requests=0` in its report. These are not fixed test rates.
 
 [Rates By Exchange Rate API](https://www.exchangerate-api.com).
 
-## Проверки кода
+## Code checks
 
-**36 passed**, JUnit: [tests.xml](tests.xml). Снимок обновлён после добавления
-adversarial-тестов; прежняя цифра 28 относилась к прогону до них.
+**36 passed**, JUnit: [tests.xml](tests.xml). The snapshot was refreshed after
+the adversarial tests were added; the earlier figure of 28 was the run before them.
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q --basetemp=.pytest_tmp --junitxml=submission/tests.xml
 ```
 
-Проверены дубликаты и перезапуск, формула/округление валют, истечение кеша,
-сбой API и повтор обогащения, уведомления, валидация, адаптер бесплатной GLM,
-стоимость платной модели и полнота оценки. Отдельно проверен недоверенный ввод:
-fake roles, вложенный JSON, spoofed closing tags, пробелы внутри команды,
-base64 и HTML-комментарии. Письмо уходит в user-role JSON-envelope, теги
-экранируются, бизнес-поля фиктивного счёта не сохраняются.
-HTTP в этих тестах подменён синтетическими ответами; это не результаты LLM.
-API-ключ проверен на отсутствие в передаваемых исходниках и отчётах.
+Covered: duplicates and restart, the currency formula and rounding, cache
+expiry, API failure and enrichment retry, notifications, validation, the free
+GLM adapter, paid-model cost, and evaluation completeness. Untrusted input is
+covered separately: fake roles, nested JSON, spoofed closing tags, spaces inside
+a command, base64, and HTML comments. The message goes into a user-role JSON
+envelope, tags are escaped, and business fields of a fake invoice are not stored.
+HTTP in these tests is replaced with synthetic responses; these are not LLM results.
+The API key was checked to be absent from the submitted sources and reports.
 
-## Предыдущие реальные попытки
+## Earlier live attempts
 
-| Конфигурация | Категории | Поля | Ошибок обработки | Стоимость |
+| Configuration | Categories | Fields | Processing errors | Cost |
 |---|---|---|---|---|
-| `openrouter/free`, исходный промпт | 7/10 | 38/55 | 3 | $0 |
-| `z-ai/glm-5.2:free`, уточнённый промпт | 5/10 | 33/55 | 6 | $0 |
-| `z-ai/glm-5.2`, уточнённый промпт | 10/10 | 55/55 | 0 | $0.00382280904 |
+| `openrouter/free`, original prompt | 7/10 | 38/55 | 3 | $0 |
+| `z-ai/glm-5.2:free`, refined prompt | 5/10 | 33/55 | 6 | $0 |
+| `z-ai/glm-5.2`, refined prompt | 10/10 | 55/55 | 0 | $0.00382280904 |
 
-Первый маршрутизатор использовал `liquid/lfm-2.5-2.6b:free`: встречались лишние
-поля, ложное определение prompt injection, обрыв ответа и ошибки провайдера.
-У бесплатной GLM первые два обращения обработаны корректно, затем endpoint
-возвращал 429. Ошибки доступности считаются ошибками всего процесса, но не
-доказательством плохой классификации моделью: дневная квота аккаунта оставалась.
+The first router used `liquid/lfm-2.5-2.6b:free`: extra fields, a false prompt
+injection, a truncated response, and provider errors showed up. The free GLM
+handled the first two messages correctly, then the endpoint returned 429.
+Availability errors count as errors of the whole process, not as proof of poor
+classification: the account's daily quota was still available.
 
-Сохранены [первый отчёт](initial_run.json), [первая оценка](initial_evaluation.json),
-[бесплатная GLM](glm_free_run.json), [её оценка](glm_free_evaluation.json).
-Это инженерная проверка конфигураций, **не контролируемый бенчмарк моделей**:
-промпт уточнялся между первым и вторым прогонами, доступность endpoint различалась.
-Файл ожидаемых результатов при этом не менялся. 100% на десяти заданных файлах
-не означает такую же точность на реальной почте.
+Kept: [first report](initial_run.json), [first evaluation](initial_evaluation.json),
+[free GLM](glm_free_run.json), [its evaluation](glm_free_evaluation.json).
+This is an engineering check of configurations, **not a controlled model
+benchmark**: the prompt was refined between the first and second runs, and
+endpoint availability differed. The expected-results file was not changed.
+100% on the ten given files does not mean the same accuracy on real mail.
