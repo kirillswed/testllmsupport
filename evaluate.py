@@ -94,6 +94,14 @@ def main():
         report = json.loads(args.report.read_text(encoding="utf-8"))
         result = evaluate(expected, report)
         write_json(args.output, result)
+    except FileNotFoundError:
+        if not args.report.exists():
+            parser.exit(
+                2,
+                f"Evaluation failed: report not found: {args.report}\n"
+                "Run `python -m triage` first, then run `python evaluate.py`.\n",
+            )
+        parser.exit(2, f"Evaluation failed: expected file or report is unreadable: {args.report}\n")
     except (OSError, ValueError) as exc:
         parser.exit(2, f"Evaluation failed: {exc}\n")
     print(f"Categories: {result['categories_correct']}/{result['expected_messages']} ({result['category_accuracy']:.1%})")

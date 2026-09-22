@@ -35,6 +35,10 @@ python -m triage
 python evaluate.py
 ```
 
+`evaluate.py` сравнивает `expected.json` с отчётом последнего прогона. Поэтому
+его нужно запускать после `python -m triage`; папка `reports/` и её JSON-файлы
+генерируются локально и намеренно не коммитятся в Git.
+
 Linux/macOS:
 
 ```bash
