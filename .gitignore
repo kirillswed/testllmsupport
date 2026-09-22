@@ -1,0 +1,15 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+.pytest_tmp/
+*.py[cod]
+data/
+reports/
+# Generated validation artifacts. Keep the explanatory VALIDATION.md tracked.
+submission/*.json
+submission/*.xml
+submission/*_run.json
+submission/*_evaluation.json
+submission/fx_live_check.json
+*.egg-info/

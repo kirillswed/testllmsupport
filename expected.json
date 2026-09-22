@@ -1,0 +1,44 @@
+{
+  "msg_01.txt": {
+    "category": "support",
+    "checks": {"fields.contact_email": "ivanov@example.com", "status": "completed"}
+  },
+  "msg_02.txt": {
+    "category": "finance_invoice",
+    "checks": {"fields.vendor": "CloudHost Ltd", "fields.amount": 1240, "fields.currency": "EUR", "fields.invoice_number": "INV-2026-0917", "fields.invoice_date": null, "fields.due_date": "2026-10-05", "status": "completed"}
+  },
+  "msg_03.txt": {
+    "category": "sales_lead",
+    "contains_all": {"fields.interest": ["1С", "API"]},
+    "checks": {"fields.company": "Логистик Плюс", "fields.contact_name": "Мария", "fields.contact_email": "maria@logisticplus.example", "fields.contact_phone": "+995 5** *** ***", "fields.employee_count": 120, "status": "completed"}
+  },
+  "msg_04.txt": {
+    "category": "bug_report",
+    "checks": {"fields.severity": "critical", "fields.version": "4.2.1", "fields.browser": "Chrome", "fields.product": null, "status": "completed"}
+  },
+  "msg_05.txt": {
+    "category": "spam",
+    "checks": {"fields.amount": null, "fields.vendor": null, "security_flags": [], "status": "completed"}
+  },
+  "msg_06.txt": {
+    "category": "finance_invoice",
+    "contains_all": {"fields.payment_terms": ["10"]},
+    "checks": {"fields.vendor": "ООО \"Правовой партнёр\"", "fields.amount": 3200, "fields.currency": "GEL", "fields.invoice_number": "47", "fields.invoice_date": "2026-09-15", "fields.due_date": null, "status": "completed"}
+  },
+  "msg_07.txt": {
+    "category": "finance_invoice",
+    "checks": {"fields.vendor": "CloudHost Ltd", "fields.amount": 1240, "fields.currency": "EUR", "fields.invoice_number": "INV-2026-0917", "fields.due_date": "2026-10-05", "duplicate_of": "msg_02.txt", "status": "completed"}
+  },
+  "msg_08.txt": {
+    "category": "unknown",
+    "checks": {"status": "needs_review", "fields.amount": null, "security_flags": []}
+  },
+  "msg_09.txt": {
+    "category": "finance_invoice",
+    "checks": {"fields.vendor": null, "fields.amount": null, "fields.currency": null, "fields.invoice_number": null, "status": "needs_review"}
+  },
+  "msg_10.txt": {
+    "category": "spam",
+    "checks": {"security_flags": ["prompt_injection"], "fields.amount": null, "fields.currency": null, "fields.vendor": null, "status": "needs_review", "classification_source": "security_guard"}
+  }
+}
