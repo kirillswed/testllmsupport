@@ -13,9 +13,9 @@
 
 Python **3.11+**. Команды выполняются из корня проекта.
 
-```powershell
+```Powershell
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+.\.venv\Scripts\activate
 python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
@@ -40,10 +40,10 @@ Linux/macOS:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 cp .env.example .env
-python -m triage
-python evaluate.py
+python3 -m triage
+python3 evaluate.py
 ```
 
 Для проверки повторного запуска ещё раз выполнить `python -m triage`:
